@@ -25,8 +25,8 @@ claude plugin update egodzb-skills@egodzb
 
 ## Skills
 
-| Skill | Description |
-|-------|-------------|
+| Skill                                                          | Description                                                                                            |
+|----------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
 | [`postgres-conventions`](skills/postgres-conventions/SKILL.md) | PostgreSQL naming and schema conventions for .NET/EF Core and Node.js (Drizzle, Prisma, TypeORM, Knex) |
 
 ## Adding a skill
