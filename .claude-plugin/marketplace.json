@@ -1,0 +1,13 @@
+{
+  "name": "egodzb",
+  "owner": {
+    "name": "Ihor Dziuba"
+  },
+  "plugins": [
+    {
+      "name": "egodzb-skills",
+      "source": "./",
+      "description": "Personal Claude Code skills"
+    }
+  ]
+}
