@@ -3,6 +3,9 @@
   "owner": {
     "name": "Ihor Dziuba"
   },
+  "metadata": {
+    "description": "Personal Claude Code skills"
+  },
   "plugins": [
     {
       "name": "egodzb-skills",

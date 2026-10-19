@@ -4,5 +4,7 @@
   "description": "Personal Claude Code skills",
   "author": {
     "name": "Ihor Dziuba"
-  }
+  },
+  "license": "MIT",
+  "repository": "https://github.com/EgoDZB/claude-skills"
 }
