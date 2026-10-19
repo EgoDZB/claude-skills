@@ -1,6 +1,6 @@
 ---
 name: postgres-conventions
-description: PostgreSQL naming and schema conventions (tables, columns, keys, constraints, indexes, relations, types) for .NET/EF Core and Node.js (Drizzle, Prisma, TypeORM, Knex). Use when designing or reviewing schemas, writing migrations, entity configurations or SQL, or when asked how to name database objects. Reports deviations to the user instead of silently changing them.
+description: PostgreSQL naming and schema conventions (tables, columns, keys, constraints, indexes, relations, types) for .NET/EF Core, Node.js (Drizzle, Prisma, TypeORM, Knex) and Go (sqlc). Use when designing or reviewing schemas, writing migrations, entity configurations, sqlc queries or SQL, or when asked how to name database objects. Reports deviations to the user instead of silently changing them.
 ---
 
 # PostgreSQL conventions
@@ -101,7 +101,7 @@ Suffixes carry meaning: `_at` instant, `_on`/`_date` calendar date, `_id` refere
 - The FK pattern includes the column, so several FKs to one table stay unique: `fk_messages_users_sender_id`,
   `fk_messages_users_recipient_id`.
 - PostgreSQL does not index FK columns. Every FK needs an index unless a composite index already starts with it. EF Core
-  creates these by convention; Drizzle, Prisma, TypeORM and Knex do not.
+  creates these by convention; Drizzle, Prisma, TypeORM, Knex and sqlc do not.
 
 ## Relations
 
@@ -139,16 +139,17 @@ table.
 - `jsonb`, never `json`.
 - `numeric` for money; never `real`, `double precision` or `money`.
 - New identity columns use `generated always as identity`, not `serial`/`bigserial`.
-- UUID primary keys use v7: PostgreSQL 18 `uuidv7()`, .NET 9 `Guid.CreateVersion7()`, Node `uuid` package `v7()`. Random
-  v4 keys fragment B-tree indexes.
+- UUID primary keys use v7: PostgreSQL 18 `uuidv7()`, .NET 9 `Guid.CreateVersion7()`, Node `uuid` package `v7()`, Go
+  `github.com/google/uuid` `uuid.NewV7()`. Random v4 keys fragment B-tree indexes.
 - `gen_random_uuid()` is built in since PostgreSQL 13; `uuid-ossp` and `pgcrypto` are not needed for it.
 - `citext` or a `lower(email)` unique index for case-insensitive uniqueness.
 
 ## Concurrency and query patterns
 
 - Optimistic concurrency, EF Core + Npgsql: a `uint` property configured with `IsRowVersion()` maps to `xmin`.
-- Optimistic concurrency, Node: `version integer not null default 0`, updated with `where id = $1 and version = $2` and
-  `version = version + 1`; zero affected rows means a conflict.
+- Optimistic concurrency, Node and Go: `version integer not null default 0`, updated with
+  `where id = $1 and version = $2` and `version = version + 1`; zero affected rows means a conflict. In sqlc use
+  `:execrows` to get the affected row count.
 - `select ... for update` and `for update skip locked` only inside an explicit transaction; in autocommit the lock is
   released immediately.
 - Advisory locks: `pg_try_advisory_xact_lock` inside a transaction. Session-level `pg_advisory_lock` only on a dedicated
@@ -166,6 +167,34 @@ table.
 | Prisma           | `@map` on fields, `@@map` on models                          |
 | TypeORM          | `SnakeNamingStrategy` from `typeorm-naming-strategies`       |
 | Knex / Objection | `knexSnakeCaseMappers()`                                     |
+| Go + sqlc        | none; Go names are generated from snake_case automatically   |
 
 If a project uses an ORM without snake_case configured, report it as Must fix before the first migration; after
 migrations exist, report it as Recommended with the migration cost.
+
+## Go + sqlc
+
+sqlc is SQL-first: the schema comes from migration files, so every rule above applies to them directly.
+
+- Point `schema` in `sqlc.yaml` at the migrations directory (goose, golang-migrate, dbmate and atlas formats are
+  supported; down migrations are ignored). Never keep a separate hand-written schema file next to migrations.
+- Plural snake_case tables give singular Go structs: `order_items` → `OrderItem`. Enum `order_status` → type
+  `OrderStatus` with constants `OrderStatusPending`.
+- Use `sql_package: pgx/v5`. Override `uuid` → `github.com/google/uuid.UUID` and, if wanted, `timestamptz` →
+  `time.Time` instead of the `pgtype` wrappers.
+- Fix initialisms with `rename` (`url: URL`, `ip: IP`) instead of renaming columns.
+- Query names are PascalCase verb + object, with the result kind:
+
+| Purpose    | Example                                     |
+|------------|---------------------------------------------|
+| One row    | `-- name: GetUserByEmail :one`              |
+| Many rows  | `-- name: ListOrdersByCustomer :many`       |
+| Insert     | `-- name: CreateOrder :one` + `returning *` |
+| Update     | `-- name: UpdateOrderStatus :execrows`      |
+| Delete     | `-- name: DeleteSession :exec`              |
+| Bulk load  | `-- name: CreateOrderItems :copyfrom`       |
+
+- Name parameters with `@name` or `sqlc.arg(name)`, and `sqlc.narg(name)` for nullable ones; positional `$1` produces
+  `Column1`-style Go fields.
+- Use `sqlc.embed(table)` for joins instead of selecting columns with ad-hoc aliases.
+- Never use `select *` in queries that should survive schema changes, except `returning *` on writes.
