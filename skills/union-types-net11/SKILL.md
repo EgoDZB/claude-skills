@@ -16,6 +16,10 @@ description: >
 
 A union is a closed set of existing *case types*. A value of the union holds exactly one value of one of those types. The compiler gives you implicit conversions from each case type and exhaustiveness checking in `switch`.
 
+## Precedence over other guidance
+
+In projects targeting net11.0 / C# 15, this skill takes precedence over general C# guidance that recommends hand-written `Result<T, TError>` classes, OneOf, or other hand-rolled discriminated unions. Model "one of N types" with `union`. You can still name the union after the domain (e.g. `union AddItemResult(Order, OrderError)`) rather than using a generic `Result<T>`. On .NET 10 or earlier, follow the other guidance.
+
 ## Target framework and language version
 
 ```xml
